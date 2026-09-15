@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hephaestus Lite · X-ray data</title>
+<meta name="description" content="Interactive elemental X-ray absorption, edge, line, anomalous scattering and atomic form-factor explorer.">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root{--bg:#0e1118;--panel:#171c27;--panel2:#1d2431;--ink:#edf2f8;--dim:#92a0b5;--line:#303a4d;--grid:#252d3d;--hot:#ffb13b;--blue:#55b6f2;--pink:#d783ff;--green:#60d6a8;--danger:#ff7080;--mono:ui-monospace,SFMono-Regular,Menlo,monospace;--sans:Inter,system-ui,-apple-system,sans-serif}
+:root[data-theme=light]{--bg:#f4f2eb;--panel:#fff;--panel2:#f8f7f3;--ink:#18202b;--dim:#637087;--line:#d8dee8;--grid:#edf0f4}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.45}
+header{position:sticky;top:0;z-index:10;display:flex;align-items:center;gap:18px;flex-wrap:wrap;padding:12px clamp(16px,3vw,42px);border-bottom:1px solid var(--line);background:color-mix(in srgb,var(--bg) 92%,transparent);backdrop-filter:blur(14px)}
+.brand{display:flex;align-items:center;gap:10px;min-width:max-content}.mark{display:grid;place-items:center;width:33px;height:33px;border:1px solid var(--hot);border-radius:9px;color:var(--hot);font:700 12px var(--mono)}h1{font-size:17px;margin:0}.brand small{display:block;color:var(--dim);font:10px var(--mono)}
+.searchbox{position:relative;display:flex;gap:7px;flex:1;max-width:540px}.searchbox input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--panel);color:var(--ink);font:14px var(--mono)}button,select,input[type=number]{border:1px solid var(--line);border-radius:7px;background:var(--panel2);color:var(--ink);padding:7px 10px;font:12px var(--mono)}button{cursor:pointer}button:hover{border-color:var(--blue)}button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--blue);outline-offset:2px}
+.atom-badge{margin-left:auto;color:var(--dim);font:12px var(--mono);white-space:nowrap}.atom-badge b{color:var(--hot);font-size:15px}.theme{padding:7px 9px}
+main{max-width:1500px;margin:auto;padding:20px clamp(16px,3vw,42px) 44px}.tabs{display:flex;gap:5px;border-bottom:1px solid var(--line);overflow-x:auto;overflow-y:hidden;scrollbar-width:none;-ms-overflow-style:none}.tabs::-webkit-scrollbar{display:none}.tab{border-color:transparent;background:transparent;color:var(--dim);border-radius:7px 7px 0 0;padding:12px 18px;white-space:nowrap;font-size:15px;font-weight:600}.tab.on{background:var(--panel);color:var(--ink);border-color:var(--line);border-bottom-color:var(--panel);transform:translateY(1px)}
+.panel{display:none;padding-top:17px}.panel.on{display:block}.card{border:1px solid var(--line);border-radius:12px;background:var(--panel);padding:15px}.panel-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;flex-wrap:wrap;margin-bottom:12px}.panel-head h2{font-size:18px;margin:0}.panel-head p{margin:3px 0 0;color:var(--dim);font:11px var(--mono)}
+.controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.controls label{display:flex;align-items:center;gap:5px;color:var(--dim);font:11px var(--mono)}.controls input[type=number]{width:104px}.controls input[type=checkbox]{accent-color:var(--hot)}.controls .primary{border-color:color-mix(in srgb,var(--hot) 60%,var(--line))}
+.legend{display:flex;gap:17px;flex-wrap:wrap;margin:5px 0 8px;font:11px var(--mono);color:var(--dim)}.legend i{display:inline-block;width:16px;height:3px;margin-right:5px;vertical-align:middle;border-radius:2px}
+.chart-wrap{position:relative;min-height:410px;overflow:hidden;border-radius:8px;background:color-mix(in srgb,var(--bg) 28%,transparent)}svg.chart{display:block;width:100%;height:430px;touch-action:none;cursor:crosshair}.zoom-help{position:absolute;right:10px;top:8px;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--panel) 90%,transparent);color:var(--dim);font:11px var(--mono);pointer-events:none}.readout{min-height:22px;margin-top:7px;color:var(--green);font:13px var(--mono)}
+.axis path,.axis line{stroke:var(--line)}.axis text{fill:var(--ink);font:13px var(--mono)}.grid line{stroke:var(--grid)}.grid path{display:none}.axis-label{fill:var(--ink);font:13px var(--mono);font-weight:600}.edge-label{font:11px var(--mono);font-weight:600}.zoom-box{fill:color-mix(in srgb,var(--blue) 18%,transparent);stroke:var(--blue);stroke-width:1.5;stroke-dasharray:5 3;pointer-events:none}.empty{display:grid;place-items:center;height:380px;text-align:center;color:var(--dim);font:13px var(--mono);padding:40px}
+.data-grid{display:grid;grid-template-columns:minmax(260px,.65fr) minmax(440px,1.35fr);gap:15px}.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fact{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}.fact span{display:block;color:var(--dim);font:10px var(--mono)}.fact b{font:17px var(--mono)}
+.table-card h3{font-size:17px;margin:0 0 11px}.table-scroll{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}.emission-table{max-height:none;overflow-x:auto;overflow-y:hidden}table{width:100%;border-collapse:collapse;font:14px var(--mono)}th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--panel2);color:var(--dim);font-size:13px;z-index:1}tr:last-child td{border-bottom:0}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 11px;flex-wrap:wrap}.section-title h3{margin:0;font-size:17px}.filters{display:flex;gap:7px;flex-wrap:wrap}.note{color:var(--dim);font:12px var(--mono)}.missing{color:var(--danger)}
+
+footer{max-width:1500px;margin:auto;padding:0 clamp(16px,3vw,42px) 28px;color:var(--dim);font:14px var(--mono)}footer a{color:var(--blue)}
+
+@media(max-width:820px){.data-grid{grid-template-columns:1fr}.atom-badge{order:3;margin-left:0;width:100%}.chart-wrap{min-height:350px}svg.chart{height:370px}.controls{align-items:flex-start}.controls label{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><div class="mark">hν</div><div><h1>Hephaestus Lite</h1><small>browser X-ray reference</small></div></div>
+  <div class="searchbox"><input id="atomInput" list="atomList" autocomplete="off" placeholder="Type an atom: Fe, iron, or 26"><datalist id="atomList"></datalist><button id="atomGo">Apply</button></div>
+  <div class="atom-badge" id="atomBadge"></div>
+  <button class="theme" id="themeBtn" title="Toggle theme">◐</button>
+</header>
+<main>
+  <nav class="tabs" aria-label="Data views">
+    <button class="tab on" data-panel="absorption">Absorption</button>
+    <button class="tab" data-panel="edges">Edges</button>
+    <button class="tab" data-panel="emission">Emission</button>
+    <button class="tab" data-panel="shannon">Shannon</button>
+    <button class="tab" data-panel="formfactor">Atomic form factor</button>
+    <button class="tab" data-panel="anomalous">F′ &amp; F″</button>
+  </nav>
+
+  <section class="panel on" id="absorption">
+    <div class="card">
+      <div class="panel-head"><div><h2>Mass attenuation coefficient</h2><p>μ/ρ versus photon energy · Chantler tables</p></div><div class="controls energy-controls">
+        <label>From <input type="number" class="emin" value="1000" min="100"></label><label>to <input type="number" class="emax" value="30000" min="101"> eV</label>
+        <label><input type="checkbox" class="logy" checked> log y</label><label><input type="checkbox" class="edges" checked> edges</label><button class="primary redraw">Apply</button><button class="csv" data-kind="absorption">CSV</button>
+      </div></div>
+      <div class="legend"><span><i style="background:var(--hot)"></i>μ/ρ</span><span><i style="background:var(--blue)"></i>absorption edges</span></div>
+      <div class="chart-wrap" id="absorptionChart"><svg class="chart"></svg><div class="zoom-help">drag box: zoom · Shift+drag: pan · wheel: zoom · right-click: reset</div></div><div class="readout"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="edges">
+    <div class="data-grid">
+      <div class="card"><div class="panel-head"><div><h2 id="elementDataTitle">Element data</h2><p id="elementDataSubtitle">Selected-element XrayDB reference values</p></div></div><div class="facts" id="facts"></div></div>
+      <div class="card table-card"><h3>Absorption edges</h3><div class="table-scroll"><table><thead><tr><th>Edge</th><th>Energy (eV)</th><th>Width (eV)</th><th>Yield</th><th>Jump</th></tr></thead><tbody id="edgesBody"></tbody></table></div></div>
+    </div>
+  </section>
+
+  <section class="panel" id="emission">
+    <div class="card table-card"><div class="section-title"><div><h3 id="emissionTitle">Emission lines</h3><span class="note">selected element only · XrayDB transitions</span></div><span class="note" id="lineCount"></span></div><div class="table-scroll emission-table"><table><thead><tr><th>Line</th><th>IUPAC</th><th>Transition</th><th>Energy (eV)</th><th>Relative intensity</th></tr></thead><tbody id="linesBody"></tbody></table></div></div>
+  </section>
+
+  <section class="panel" id="shannon">
+    <div class="card table-card">
+      <div class="section-title"><div><h3 id="shannonTitle">Shannon ionic radii</h3><span class="note">selected element only · radii in Å · coordination notation follows Shannon</span></div><div class="filters"><select id="chargeFilter"><option value="">All oxidation states</option></select><select id="coordFilter"><option value="">All coordinations</option></select></div></div>
+      <div class="table-scroll"><table><thead><tr><th>Oxidation state</th><th>Coordination</th><th>Spin</th><th>Crystal radius (Å)</th><th>Ionic radius (Å)</th><th>Remark</th></tr></thead><tbody id="shannonBody"></tbody></table></div>
+    </div>
+  </section>
+
+  <section class="panel" id="anomalous">
+    <div class="card">
+      <div class="panel-head"><div><h2>Anomalous scattering factors</h2><p>f′ and f″ versus photon energy · Chantler tables</p></div><div class="controls energy-controls">
+        <label>From <input type="number" class="emin" value="1000" min="100"></label><label>to <input type="number" class="emax" value="30000" min="101"> eV</label>
+        <label><input type="checkbox" class="showf1" checked> f′</label><label><input type="checkbox" class="showf2" checked> f″</label><label><input type="checkbox" class="edges" checked> edges</label><button class="primary redraw">Apply</button><button class="csv" data-kind="anomalous">CSV</button>
+      </div></div>
+      <div class="legend"><span><i style="background:var(--blue)"></i>f′</span><span><i style="background:var(--pink)"></i>f″</span></div>
+      <div class="chart-wrap" id="anomalousChart"><svg class="chart"></svg><div class="zoom-help">drag box: zoom · Shift+drag: pan · wheel: zoom · right-click: reset</div></div><div class="readout"></div>
+    </div>
+  </section>
+
+  <section class="panel" id="formfactor">
+    <div class="card">
+      <div class="panel-head"><div><h2>Atomic form factor</h2><p>neutral-atom f₀(q) · Waasmaier–Kirfel parameterization</p></div><div class="controls">
+        <label>q from <input type="number" id="qmin" value="0" min="0" step=".1"></label><label>to <input type="number" id="qmax" value="2" min=".1" step=".1"> Å⁻¹</label><button class="primary" id="formApply">Apply</button><button class="csv" data-kind="formfactor">CSV</button>
+      </div></div>
+      <div class="legend"><span><i style="background:var(--green)"></i>f₀(q)</span></div>
+      <div class="chart-wrap" id="formfactorChart"><svg class="chart"></svg><div class="zoom-help">drag box: zoom · Shift+drag: pan · wheel: zoom · right-click: reset</div></div><div class="readout"></div>
+    </div>
+  </section>
+</main>
+<footer id="status">Loading reference tables…</footer>
+
+<script>
+const DATA_ROOT="./data/";
+const state={elements:[],bySymbol:new Map(),selected:null,absorption:{},scattering:{},forms:{},shannon:{},active:"absorption"};
+const colors={hot:"#ffb13b",blue:"#55b6f2",pink:"#d783ff",green:"#60d6a8"};
+const fmt=d3.format(",.6~g");
+const esc=value=>String(value??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+Promise.all(["elements.json","absorption.json","scattering.json","form-factors.json","shannon-radii.json"].map(name=>fetch(DATA_ROOT+name).then(r=>{if(!r.ok)throw Error(name);return r.json()})))
+.then(([elementFile,absorption,scattering,forms,shannon])=>{
+  state.elements=elementFile.elements; state.absorption=absorption; state.scattering=scattering; state.forms=forms; state.shannon=shannon;
+  state.elements.forEach(e=>state.bySymbol.set(e.symbol,e));
+  document.querySelector("#atomList").innerHTML=state.elements.map(e=>`<option value="${e.symbol}">${e.z} · ${esc(e.name)}</option>`).join("");
+  const m=elementFile.metadata; document.querySelector("#status").innerHTML=`${m.elements} elements · Made with AI on september 15, 2026. Largely inspired from Hephaestus/Athena.`;
+  choose("Fe");
+}).catch(error=>{document.querySelector("#status").innerHTML=`<span class="missing">Could not load data: ${esc(error.message)}. Serve this folder over HTTP.</span>`;});
+
+function resolveAtom(raw){
+  const value=raw.trim().toLowerCase(); if(!value)return null;
+  return state.elements.find(e=>e.symbol.toLowerCase()===value||e.name.toLowerCase()===value||String(e.z)===value);
+}
+function submitAtom(){const e=resolveAtom(document.querySelector("#atomInput").value);if(e)choose(e.symbol);else{document.querySelector("#atomInput").setCustomValidity("Use an element symbol, full name, or atomic number.");document.querySelector("#atomInput").reportValidity();}}
+function choose(symbol){
+  state.selected=state.bySymbol.get(symbol); const e=state.selected; const input=document.querySelector("#atomInput"); input.value=e.symbol;input.setCustomValidity("");
+  document.querySelector("#atomBadge").innerHTML=`<b>${e.symbol}</b> · ${esc(e.name)} · Z ${e.z}`;
+  renderData(); drawActive();
+}
+document.querySelector("#atomGo").onclick=submitAtom;
+document.querySelector("#atomInput").addEventListener("keydown",e=>{if(e.key==="Enter")submitAtom()});
+document.querySelector("#atomInput").addEventListener("change",()=>{const e=resolveAtom(document.querySelector("#atomInput").value);if(e)choose(e.symbol)});
+document.querySelectorAll(".tab").forEach(tab=>tab.onclick=()=>{
+  document.querySelectorAll(".tab,.panel").forEach(x=>x.classList.remove("on"));tab.classList.add("on");state.active=tab.dataset.panel;document.querySelector("#"+state.active).classList.add("on");drawActive();
+});
+document.querySelectorAll(".redraw").forEach(button=>button.onclick=drawActive);
+document.querySelectorAll(".logy,.edges,.showf1,.showf2").forEach(control=>control.onchange=drawActive);
+document.querySelector("#formApply").onclick=drawActive;
+document.querySelector("#themeBtn").onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==="light"?"dark":"light";drawActive()};
+window.addEventListener("resize",debounce(drawActive,150));
+
+function drawActive(){
+  if(!state.selected)return;
+  if(state.active==="absorption")drawAbsorption();
+  if(state.active==="anomalous")drawAnomalous();
+  if(state.active==="formfactor")drawFormFactor();
+}
+function energySettings(panel){return{min:+panel.querySelector(".emin").value,max:+panel.querySelector(".emax").value,edges:panel.querySelector(".edges")?.checked};}
+function validRange(min,max){return Number.isFinite(min)&&Number.isFinite(max)&&max>min}
+function missingPlot(container,message){container.querySelector("svg").replaceChildren();let empty=container.querySelector(".empty");if(!empty){empty=document.createElement("div");empty.className="empty";container.prepend(empty)}empty.textContent=message}
+function clearMissing(container){container.querySelector(".empty")?.remove()}
+
+function drawAbsorption(){
+  const panel=document.querySelector("#absorption"), settings=energySettings(panel), record=state.absorption[state.selected.symbol], container=document.querySelector("#absorptionChart");
+  if(!record){missingPlot(container,`Absorption data are not available for ${state.selected.symbol} in the Chantler table.`);return} clearMissing(container);
+  if(!validRange(settings.min,settings.max))return;
+  const points=record.mu.filter(d=>d[0]>=settings.min&&d[0]<=settings.max);
+  drawPlot(container,[{name:"μ/ρ",color:colors.hot,points}],{xLabel:"Photon energy (eV)",yLabel:`μ/ρ (${record.unit})`,logY:panel.querySelector(".logy").checked,edges:settings.edges?visibleEdges(settings):[],readout:panel.querySelector(".readout")});
+}
+function drawAnomalous(){
+  const panel=document.querySelector("#anomalous"), settings=energySettings(panel), record=state.scattering[state.selected.symbol], container=document.querySelector("#anomalousChart");
+  if(!record){missingPlot(container,`f′ and f″ are not available for ${state.selected.symbol} in the Chantler table.`);return} clearMissing(container);
+  if(!validRange(settings.min,settings.max))return;
+  const rows=record.table.filter(d=>d[0]>=settings.min&&d[0]<=settings.max),series=[];
+  if(panel.querySelector(".showf1").checked)series.push({name:"f′",color:colors.blue,points:rows.map(d=>[d[0],d[1]])});
+  if(panel.querySelector(".showf2").checked)series.push({name:"f″",color:colors.pink,points:rows.map(d=>[d[0],d[2]])});
+  drawPlot(container,series,{xLabel:"Photon energy (eV)",yLabel:"Electrons",edges:settings.edges?visibleEdges(settings):[],readout:panel.querySelector(".readout")});
+}
+function formPoints(){
+  const p=state.forms[state.selected.symbol];if(!p)return[];const lo=+document.querySelector("#qmin").value,hi=+document.querySelector("#qmax").value;if(!validRange(lo,hi))return[];
+  return d3.range(501).map(i=>{const q=lo+(hi-lo)*i/500;return[q,p.offset+d3.sum(p.scale.map((a,j)=>a*Math.exp(-p.exponents[j]*q*q)))]});
+}
+function drawFormFactor(){
+  const container=document.querySelector("#formfactorChart"),p=state.forms[state.selected.symbol];
+  if(!p){missingPlot(container,`A neutral-atom form factor is not available for ${state.selected.symbol} in Waasmaier–Kirfel.`);return}clearMissing(container);
+  drawPlot(container,[{name:"f₀",color:colors.green,points:formPoints()}],{xLabel:"q = sin(θ)/λ (Å⁻¹)",yLabel:"f₀ (electrons)",readout:document.querySelector("#formfactor .readout")});
+}
+function visibleEdges(settings){return state.selected.edges.filter(e=>e.energy>=settings.min&&e.energy<=settings.max)}
+
+function drawPlot(container,series,options){
+  const svg=d3.select(container.querySelector("svg"));svg.selectAll("*").remove();
+  const width=Math.max(620,container.clientWidth),height=parseFloat(getComputedStyle(svg.node()).height)||430,margin={top:28,right:32,bottom:62,left:92},iw=width-margin.left-margin.right,ih=height-margin.top-margin.bottom;
+  svg.attr("viewBox",`0 0 ${width} ${height}`);
+  const all=series.flatMap(s=>s.points).filter(d=>Number.isFinite(d[0])&&Number.isFinite(d[1])&&(options.logY?d[1]>0:true));
+  if(!all.length){missingPlot(container,"No values in this range.");return}
+  const x0=d3.scaleLinear().domain(d3.extent(all,d=>d[0])).nice().range([0,iw]);
+  const yExtent=d3.extent(all,d=>d[1]);if(yExtent[0]===yExtent[1]){yExtent[0]-=1;yExtent[1]+=1}
+  const y0=(options.logY?d3.scaleLog().domain([Math.max(d3.min(all,d=>d[1]),1e-12),d3.max(all,d=>d[1])]):d3.scaleLinear().domain(yExtent).nice()).range([ih,0]);
+  const originalX=x0.domain().slice(),originalY=y0.domain().slice();
+  const root=svg.append("g").attr("transform",`translate(${margin.left},${margin.top})`);
+  const clipId="clip-"+Math.random().toString(36).slice(2);svg.append("defs").append("clipPath").attr("id",clipId).append("rect").attr("width",iw).attr("height",ih);
+  const gridX=root.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`),gridY=root.append("g").attr("class","grid"),axisX=root.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`),axisY=root.append("g").attr("class","axis");
+  root.append("text").attr("class","axis-label").attr("x",iw/2).attr("y",ih+52).attr("text-anchor","middle").text(options.xLabel);
+  root.append("text").attr("class","axis-label").attr("transform","rotate(-90)").attr("x",-ih/2).attr("y",-70).attr("text-anchor","middle").text(options.yLabel);
+  const plot=root.append("g").attr("clip-path",`url(#${clipId})`),edgeLayer=plot.append("g"),pathLayer=plot.append("g");
+  const paths=series.map(s=>({s,path:pathLayer.append("path").datum(s.points).attr("fill","none").attr("stroke",s.color).attr("stroke-width",1.8)}));
+  const guide=plot.append("line").attr("stroke","var(--dim)").attr("stroke-dasharray","3 3").attr("y1",0).attr("y2",ih).style("display","none");
+  const overlay=root.append("rect").attr("width",iw).attr("height",ih).attr("fill","transparent").style("pointer-events","all");
+  const zoomBox=root.append("rect").attr("class","zoom-box").style("display","none");
+  let cx=x0.copy(),cy=y0.copy(),gesture=null;
+  function render(){
+    const xTicks=Math.max(3,Math.floor(iw/125));
+    gridX.call(d3.axisBottom(cx).ticks(xTicks).tickSize(-ih).tickFormat(""));gridY.call(d3.axisLeft(cy).ticks(6).tickSize(-iw).tickFormat(""));
+    axisX.call(d3.axisBottom(cx).ticks(xTicks).tickPadding(9).tickFormat(d3.format("~s")));axisY.call(d3.axisLeft(cy).ticks(6).tickPadding(9).tickFormat(d3.format("~g")));
+    paths.forEach(({path})=>path.attr("d",d3.line().defined(d=>Number.isFinite(d[1])&&(!options.logY||d[1]>0)).x(d=>cx(d[0])).y(d=>cy(d[1]))));
+    edgeLayer.selectAll("*").remove();(options.edges||[]).forEach((edge,i)=>{const x=cx(edge.energy);if(x>=0&&x<=iw){edgeLayer.append("line").attr("x1",x).attr("x2",x).attr("y1",0).attr("y2",ih).attr("stroke",colors.blue).attr("stroke-opacity",.48).attr("stroke-dasharray","4 4");edgeLayer.append("text").attr("class","edge-label").attr("fill",colors.blue).attr("x",x+3).attr("y",11+(i%3)*11).text(edge.edge)}});
+  }
+  render();
+  function showReadout(mx){
+    const x=cx.invert(mx);guide.attr("x1",mx).attr("x2",mx).style("display",null);
+    const values=series.map(s=>{const i=d3.bisector(d=>d[0]).center(s.points,x),d=s.points[Math.max(0,i)];return d?`${s.name} ${fmt(d[1])}`:""});
+    options.readout.textContent=`${options.xLabel.startsWith("Photon")?"E":"q"} ${fmt(x)} · ${values.join(" · ")}`;
+  }
+  overlay
+    .on("pointerdown",function(event){
+      if(event.button!==0)return;
+      event.preventDefault();this.setPointerCapture?.(event.pointerId);
+      const point=d3.pointer(event,this);
+      gesture={mode:event.shiftKey?"pan":"box",start:point,last:point,x:cx.copy(),y:cy.copy()};
+      if(gesture.mode==="box")zoomBox.attr("x",point[0]).attr("y",point[1]).attr("width",0).attr("height",0).style("display",null);
+    })
+    .on("pointermove",function(event){
+      const point=d3.pointer(event,this);
+      if(!gesture){showReadout(point[0]);return}
+      gesture.last=point;
+      if(gesture.mode==="box"){
+        const x=Math.min(gesture.start[0],point[0]),y=Math.min(gesture.start[1],point[1]);
+        zoomBox.attr("x",x).attr("y",y).attr("width",Math.abs(point[0]-gesture.start[0])).attr("height",Math.abs(point[1]-gesture.start[1]));
+      }else{
+        const dx=point[0]-gesture.start[0],dy=point[1]-gesture.start[1];
+        cx.domain([gesture.x.invert(-dx),gesture.x.invert(iw-dx)]);
+        cy.domain([gesture.y.invert(ih-dy),gesture.y.invert(-dy)]);
+        render();
+      }
+    })
+    .on("pointerup pointercancel",function(event){
+      if(!gesture)return;
+      if(gesture.mode==="box"){
+        const a=gesture.start,b=gesture.last,x1=Math.max(0,Math.min(a[0],b[0])),x2=Math.min(iw,Math.max(a[0],b[0])),y1=Math.max(0,Math.min(a[1],b[1])),y2=Math.min(ih,Math.max(a[1],b[1]));
+        zoomBox.style("display","none");
+        if(x2-x1>8&&y2-y1>8){cx.domain([cx.invert(x1),cx.invert(x2)]);cy.domain([cy.invert(y2),cy.invert(y1)]);render()}
+      }
+      this.releasePointerCapture?.(event.pointerId);gesture=null;
+    })
+    .on("wheel",function(event){
+      event.preventDefault();
+      const [mx,my]=d3.pointer(event,this),factor=Math.max(.25,Math.min(4,Math.exp(event.deltaY*.0015)));
+      cx.domain([cx.invert(mx+(0-mx)*factor),cx.invert(mx+(iw-mx)*factor)]);
+      cy.domain([cy.invert(my+(ih-my)*factor),cy.invert(my+(0-my)*factor)]);
+      render();
+    })
+    .on("contextmenu",event=>{event.preventDefault();gesture=null;zoomBox.style("display","none");cx.domain(originalX);cy.domain(originalY);render()})
+    .on("mouseleave",()=>{if(!gesture){guide.style("display","none");options.readout.textContent=""}});
+}
+
+function renderData(){
+  const e=state.elements.find(item=>item.symbol===state.selected.symbol);
+  document.querySelector("#elementDataTitle").textContent=`${e.symbol} — ${e.name}`;
+  document.querySelector("#elementDataSubtitle").textContent=`Selected element only · atomic number ${e.z}`;
+  document.querySelector("#emissionTitle").textContent=`Emission lines — ${e.symbol}`;
+  document.querySelector("#shannonTitle").textContent=`Shannon ionic radii — ${e.symbol}`;
+  document.querySelector("#facts").innerHTML=[
+    ["Atomic number",e.z],["Symbol",e.symbol],["Atomic mass",e.atomic_mass?fmt(e.atomic_mass)+" g/mol":"—"],["Density",e.density?fmt(e.density)+" g/cm³":"—"]
+  ].map(([k,v])=>`<div class="fact"><span>${k}</span><b>${esc(v)}</b></div>`).join("");
+  document.querySelector("#edgesBody").innerHTML=e.edges.length?e.edges.map(x=>`<tr><td>${esc(x.edge)}</td><td>${fmt(x.energy)}</td><td>${x.width==null?"—":fmt(x.width)}</td><td>${x.yield==null?"—":fmt(x.yield)}</td><td>${x.jump==null?"—":fmt(x.jump)}</td></tr>`).join(""):`<tr><td colspan="5" class="missing">No edge table available.</td></tr>`;
+  document.querySelector("#lineCount").textContent=`${e.lines.length} transitions`;
+  document.querySelector("#linesBody").innerHTML=e.lines.length?e.lines.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.iupac)}</td><td>${esc(x.initial)} → ${esc(x.final)}</td><td>${fmt(x.energy)}</td><td>${x.intensity==null?"—":fmt(x.intensity)}</td></tr>`).join(""):`<tr><td colspan="5" class="missing">No emission-line table available.</td></tr>`;
+  buildShannonFilters();renderShannon();
+}
+function shannonRows(){
+  const source=state.shannon[state.selected.symbol]||{},rows=[];
+  Object.entries(source).forEach(([charge,coords])=>Object.entries(coords).forEach(([coord,v])=>rows.push({charge,coord:coord||"—",...v})));
+  return rows.sort((a,b)=>(+a.charge)-(+b.charge)||a.coord.localeCompare(b.coord));
+}
+function buildShannonFilters(){
+  const rows=shannonRows(),charge=document.querySelector("#chargeFilter"),coord=document.querySelector("#coordFilter");
+  charge.innerHTML='<option value="">All oxidation states</option>'+[...new Set(rows.map(r=>r.charge))].sort((a,b)=>+a-+b).map(v=>`<option value="${esc(v)}">${+v>0?"+":""}${esc(v)}</option>`).join("");
+  coord.innerHTML='<option value="">All coordinations</option>'+[...new Set(rows.map(r=>r.coord))].sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+}
+function renderShannon(){
+  const charge=document.querySelector("#chargeFilter").value,coord=document.querySelector("#coordFilter").value,rows=shannonRows().filter(r=>(!charge||r.charge===charge)&&(!coord||r.coord===coord));
+  document.querySelector("#shannonBody").innerHTML=rows.length?rows.map(r=>`<tr><td>${+r.charge>0?"+":""}${esc(r.charge)}</td><td>${esc(r.coord)}</td><td>${esc(r.spin||"—")}</td><td>${fmt(r.r_crystal)}</td><td>${fmt(r.r_ionic)}</td><td>${esc(r.remark||"—")}</td></tr>`).join(""):`<tr><td colspan="6" class="missing">No Shannon radius entry for this selection.</td></tr>`;
+}
+document.querySelector("#chargeFilter").onchange=renderShannon;document.querySelector("#coordFilter").onchange=renderShannon;
+
+document.querySelectorAll(".csv").forEach(button=>button.onclick=()=>downloadCsv(button.dataset.kind));
+function downloadCsv(kind){
+  const s=state.selected.symbol;let rows=[],name="";
+  if(kind==="absorption"){const r=state.absorption[s];if(!r)return;rows=[["energy_eV","mu_over_rho_cm2_g"],...r.mu];name=`${s}-absorption.csv`}
+  if(kind==="anomalous"){const r=state.scattering[s];if(!r)return;rows=[["energy_eV","f_prime","f_double_prime"],...r.table];name=`${s}-anomalous.csv`}
+  if(kind==="formfactor"){const r=formPoints();if(!r.length)return;rows=[["q_inverse_A","f0_electrons"],...r];name=`${s}-atomic-form-factor.csv`}
+  const blob=new Blob([rows.map(row=>row.join(",")).join("\n")],{type:"text/csv"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function debounce(fn,ms){let timer;return()=>{clearTimeout(timer);timer=setTimeout(fn,ms)}}
+</script>
+</body>
+</html>
