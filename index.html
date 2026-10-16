@@ -19,7 +19,7 @@ main{max-width:1500px;margin:auto;padding:20px clamp(16px,3vw,42px) 44px}.tabs{d
 .controls{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.controls label{display:flex;align-items:center;gap:5px;color:var(--dim);font:11px var(--mono)}.controls input[type=number]{width:104px}.controls input[type=checkbox]{accent-color:var(--hot)}.controls .primary{border-color:color-mix(in srgb,var(--hot) 60%,var(--line))}
 .legend{display:flex;gap:17px;flex-wrap:wrap;margin:5px 0 8px;font:11px var(--mono);color:var(--dim)}.legend i{display:inline-block;width:16px;height:3px;margin-right:5px;vertical-align:middle;border-radius:2px}
 .chart-wrap{position:relative;min-height:410px;overflow:hidden;border-radius:8px;background:color-mix(in srgb,var(--bg) 28%,transparent)}svg.chart{display:block;width:100%;height:430px;touch-action:none;cursor:crosshair}.zoom-help{position:absolute;right:10px;top:8px;padding:6px 9px;border:1px solid var(--line);border-radius:6px;background:color-mix(in srgb,var(--panel) 90%,transparent);color:var(--dim);font:11px var(--mono);pointer-events:none}.readout{min-height:22px;margin-top:7px;color:var(--green);font:13px var(--mono)}
-.axis path,.axis line{stroke:var(--line)}.axis text{fill:var(--ink);font:13px var(--mono)}.grid line{stroke:var(--grid)}.grid path{display:none}.axis-label{fill:var(--ink);font:13px var(--mono);font-weight:600}.edge-label{font:11px var(--mono);font-weight:600}.zoom-box{fill:color-mix(in srgb,var(--blue) 18%,transparent);stroke:var(--blue);stroke-width:1.5;stroke-dasharray:5 3;pointer-events:none}.empty{display:grid;place-items:center;height:380px;text-align:center;color:var(--dim);font:13px var(--mono);padding:40px}
+.axis path,.axis line{stroke:var(--line)}.axis text{fill:var(--ink);font:13px var(--mono)}.grid line{stroke:var(--grid)}.grid path{display:none}.axis-label{fill:var(--ink);font:13px var(--mono);font-weight:600}.edge-label{font:11px var(--mono);font-weight:600}.zoom-box{fill:color-mix(in srgb,var(--blue) 18%,transparent);stroke:var(--blue);stroke-width:1.5;stroke-dasharray:5 3;pointer-events:none}.empty{display:grid;place-items:center;height:380px;text-align:center;color:var(--dim);font:13px var(--mono);padding:40px}.chart-wrap .empty+svg.chart{display:none}
 .data-grid{display:grid;grid-template-columns:minmax(260px,.65fr) minmax(440px,1.35fr);gap:15px}.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.fact{padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel2)}.fact span{display:block;color:var(--dim);font:10px var(--mono)}.fact b{font:17px var(--mono)}
 .table-card h3{font-size:17px;margin:0 0 11px}.table-scroll{max-height:520px;overflow:auto;border:1px solid var(--line);border-radius:8px}.emission-table{max-height:none;overflow-x:auto;overflow-y:hidden}table{width:100%;border-collapse:collapse;font:14px var(--mono)}th,td{padding:10px 12px;border-bottom:1px solid var(--line);text-align:left;white-space:nowrap}th{position:sticky;top:0;background:var(--panel2);color:var(--dim);font-size:13px;z-index:1}tr:last-child td{border-bottom:0}.section-title{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:0 0 11px;flex-wrap:wrap}.section-title h3{margin:0;font-size:17px}.filters{display:flex;gap:7px;flex-wrap:wrap}.note{color:var(--dim);font:12px var(--mono)}.missing{color:var(--danger)}
 
@@ -109,7 +109,7 @@ Promise.all(["elements.json","absorption.json","scattering.json","form-factors.j
   state.elements=elementFile.elements; state.absorption=absorption; state.scattering=scattering; state.forms=forms; state.shannon=shannon;
   state.elements.forEach(e=>state.bySymbol.set(e.symbol,e));
   document.querySelector("#atomList").innerHTML=state.elements.map(e=>`<option value="${e.symbol}">${e.z} · ${esc(e.name)}</option>`).join("");
-  const m=elementFile.metadata; document.querySelector("#status").innerHTML=`${m.elements} elements · Made with AI on september 15, 2026. Largely inspired from Hephaestus/Athena.`;
+  const m=elementFile.metadata; document.querySelector("#status").innerHTML=`${esc(m.elements)} elements · Made with AI on September 15, 2026. Largely inspired from Hephaestus/Athena.`;
   choose("Fe");
 }).catch(error=>{document.querySelector("#status").innerHTML=`<span class="missing">Could not load data: ${esc(error.message)}. Serve this folder over HTTP.</span>`;});
 
@@ -148,19 +148,22 @@ function clearMissing(container){container.querySelector(".empty")?.remove()}
 
 function drawAbsorption(){
   const panel=document.querySelector("#absorption"), settings=energySettings(panel), record=state.absorption[state.selected.symbol], container=document.querySelector("#absorptionChart");
-  if(!record){missingPlot(container,`Absorption data are not available for ${state.selected.symbol} in the Chantler table.`);return} clearMissing(container);
-  if(!validRange(settings.min,settings.max))return;
+  if(!record){missingPlot(container,`Absorption data are not available for ${state.selected.symbol} in the Chantler table.`);return}
+  if(!validRange(settings.min,settings.max)){missingPlot(container,"Enter a valid energy range (from < to).");return}
+  clearMissing(container);
   const points=record.mu.filter(d=>d[0]>=settings.min&&d[0]<=settings.max);
-  drawPlot(container,[{name:"μ/ρ",color:colors.hot,points}],{xLabel:"Photon energy (eV)",yLabel:`μ/ρ (${record.unit})`,logY:panel.querySelector(".logy").checked,edges:settings.edges?visibleEdges(settings):[],readout:panel.querySelector(".readout")});
+  drawPlot(container,[{name:"μ/ρ",color:colors.hot,points}],{xLabel:"Photon energy (eV)",xFormat:"~s",yLabel:`μ/ρ (${record.unit})`,logY:panel.querySelector(".logy").checked,edges:settings.edges?visibleEdges(settings):[],readout:panel.querySelector(".readout")});
 }
 function drawAnomalous(){
   const panel=document.querySelector("#anomalous"), settings=energySettings(panel), record=state.scattering[state.selected.symbol], container=document.querySelector("#anomalousChart");
-  if(!record){missingPlot(container,`f′ and f″ are not available for ${state.selected.symbol} in the Chantler table.`);return} clearMissing(container);
-  if(!validRange(settings.min,settings.max))return;
+  if(!record){missingPlot(container,`f′ and f″ are not available for ${state.selected.symbol} in the Chantler table.`);return}
+  if(!validRange(settings.min,settings.max)){missingPlot(container,"Enter a valid energy range (from < to).");return}
   const rows=record.table.filter(d=>d[0]>=settings.min&&d[0]<=settings.max),series=[];
   if(panel.querySelector(".showf1").checked)series.push({name:"f′",color:colors.blue,points:rows.map(d=>[d[0],d[1]])});
   if(panel.querySelector(".showf2").checked)series.push({name:"f″",color:colors.pink,points:rows.map(d=>[d[0],d[2]])});
-  drawPlot(container,series,{xLabel:"Photon energy (eV)",yLabel:"Electrons",edges:settings.edges?visibleEdges(settings):[],readout:panel.querySelector(".readout")});
+  if(!series.length){missingPlot(container,"Select f′ and/or f″ to plot.");return}
+  clearMissing(container);
+  drawPlot(container,series,{xLabel:"Photon energy (eV)",xFormat:"~s",yLabel:"Electrons",edges:settings.edges?visibleEdges(settings):[],readout:panel.querySelector(".readout")});
 }
 function formPoints(){
   const p=state.forms[state.selected.symbol];if(!p)return[];const lo=+document.querySelector("#qmin").value,hi=+document.querySelector("#qmax").value;if(!validRange(lo,hi))return[];
@@ -168,8 +171,11 @@ function formPoints(){
 }
 function drawFormFactor(){
   const container=document.querySelector("#formfactorChart"),p=state.forms[state.selected.symbol];
-  if(!p){missingPlot(container,`A neutral-atom form factor is not available for ${state.selected.symbol} in Waasmaier–Kirfel.`);return}clearMissing(container);
-  drawPlot(container,[{name:"f₀",color:colors.green,points:formPoints()}],{xLabel:"q = sin(θ)/λ (Å⁻¹)",yLabel:"f₀ (electrons)",readout:document.querySelector("#formfactor .readout")});
+  if(!p){missingPlot(container,`A neutral-atom form factor is not available for ${state.selected.symbol} in Waasmaier–Kirfel.`);return}
+  const points=formPoints();
+  if(!points.length){missingPlot(container,"Enter a valid q range (from < to).");return}
+  clearMissing(container);
+  drawPlot(container,[{name:"f₀",color:colors.green,points}],{xLabel:"q = sin(θ)/λ (Å⁻¹)",xFormat:"~g",yLabel:"f₀ (electrons)",readout:document.querySelector("#formfactor .readout")});
 }
 function visibleEdges(settings){return state.selected.edges.filter(e=>e.energy>=settings.min&&e.energy<=settings.max)}
 
@@ -183,6 +189,7 @@ function drawPlot(container,series,options){
   const yExtent=d3.extent(all,d=>d[1]);if(yExtent[0]===yExtent[1]){yExtent[0]-=1;yExtent[1]+=1}
   const y0=(options.logY?d3.scaleLog().domain([Math.max(d3.min(all,d=>d[1]),1e-12),d3.max(all,d=>d[1])]):d3.scaleLinear().domain(yExtent).nice()).range([ih,0]);
   const originalX=x0.domain().slice(),originalY=y0.domain().slice();
+  const xTickFormat=d3.format(options.xFormat||"~g");
   const root=svg.append("g").attr("transform",`translate(${margin.left},${margin.top})`);
   const clipId="clip-"+Math.random().toString(36).slice(2);svg.append("defs").append("clipPath").attr("id",clipId).append("rect").attr("width",iw).attr("height",ih);
   const gridX=root.append("g").attr("class","grid").attr("transform",`translate(0,${ih})`),gridY=root.append("g").attr("class","grid"),axisX=root.append("g").attr("class","axis").attr("transform",`translate(0,${ih})`),axisY=root.append("g").attr("class","axis");
@@ -196,15 +203,16 @@ function drawPlot(container,series,options){
   let cx=x0.copy(),cy=y0.copy(),gesture=null;
   function render(){
     const xTicks=Math.max(3,Math.floor(iw/125));
+    const yTickFormat=options.logY?cy.tickFormat(6,"~g"):d3.format("~g");
     gridX.call(d3.axisBottom(cx).ticks(xTicks).tickSize(-ih).tickFormat(""));gridY.call(d3.axisLeft(cy).ticks(6).tickSize(-iw).tickFormat(""));
-    axisX.call(d3.axisBottom(cx).ticks(xTicks).tickPadding(9).tickFormat(d3.format("~s")));axisY.call(d3.axisLeft(cy).ticks(6).tickPadding(9).tickFormat(d3.format("~g")));
+    axisX.call(d3.axisBottom(cx).ticks(xTicks).tickPadding(9).tickFormat(xTickFormat));axisY.call(d3.axisLeft(cy).ticks(6).tickPadding(9).tickFormat(yTickFormat));
     paths.forEach(({path})=>path.attr("d",d3.line().defined(d=>Number.isFinite(d[1])&&(!options.logY||d[1]>0)).x(d=>cx(d[0])).y(d=>cy(d[1]))));
     edgeLayer.selectAll("*").remove();(options.edges||[]).forEach((edge,i)=>{const x=cx(edge.energy);if(x>=0&&x<=iw){edgeLayer.append("line").attr("x1",x).attr("x2",x).attr("y1",0).attr("y2",ih).attr("stroke",colors.blue).attr("stroke-opacity",.48).attr("stroke-dasharray","4 4");edgeLayer.append("text").attr("class","edge-label").attr("fill",colors.blue).attr("x",x+3).attr("y",11+(i%3)*11).text(edge.edge)}});
   }
   render();
   function showReadout(mx){
     const x=cx.invert(mx);guide.attr("x1",mx).attr("x2",mx).style("display",null);
-    const values=series.map(s=>{const i=d3.bisector(d=>d[0]).center(s.points,x),d=s.points[Math.max(0,i)];return d?`${s.name} ${fmt(d[1])}`:""});
+    const values=series.map(s=>{const i=d3.bisector(d=>d[0]).center(s.points,x),d=s.points[Math.max(0,i)];return d?`${s.name} ${fmt(d[1])}`:""}).filter(Boolean);
     options.readout.textContent=`${options.xLabel.startsWith("Photon")?"E":"q"} ${fmt(x)} · ${values.join(" · ")}`;
   }
   overlay
@@ -263,15 +271,21 @@ function renderData(){
   document.querySelector("#linesBody").innerHTML=e.lines.length?e.lines.map(x=>`<tr><td>${esc(x.name)}</td><td>${esc(x.iupac)}</td><td>${esc(x.initial)} → ${esc(x.final)}</td><td>${fmt(x.energy)}</td><td>${x.intensity==null?"—":fmt(x.intensity)}</td></tr>`).join(""):`<tr><td colspan="5" class="missing">No emission-line table available.</td></tr>`;
   buildShannonFilters();renderShannon();
 }
+// Shannon coordinations are Roman numerals (IV, VI, VIII, IVSQ, IIIPY…): sort by their numeric value, not alphabetically.
+function romanValue(coord){
+  const m=/^[IVX]+/.exec(coord);if(!m)return Infinity;
+  let n=0,peak=0;for(const c of [...m[0]].reverse()){const v={I:1,V:5,X:10}[c];n+=v<peak?-v:v;peak=Math.max(peak,v)}return n;
+}
+function compareCoord(a,b){return(romanValue(a)-romanValue(b))||a.localeCompare(b)}
 function shannonRows(){
   const source=state.shannon[state.selected.symbol]||{},rows=[];
   Object.entries(source).forEach(([charge,coords])=>Object.entries(coords).forEach(([coord,v])=>rows.push({charge,coord:coord||"—",...v})));
-  return rows.sort((a,b)=>(+a.charge)-(+b.charge)||a.coord.localeCompare(b.coord));
+  return rows.sort((a,b)=>(+a.charge)-(+b.charge)||compareCoord(a.coord,b.coord));
 }
 function buildShannonFilters(){
   const rows=shannonRows(),charge=document.querySelector("#chargeFilter"),coord=document.querySelector("#coordFilter");
   charge.innerHTML='<option value="">All oxidation states</option>'+[...new Set(rows.map(r=>r.charge))].sort((a,b)=>+a-+b).map(v=>`<option value="${esc(v)}">${+v>0?"+":""}${esc(v)}</option>`).join("");
-  coord.innerHTML='<option value="">All coordinations</option>'+[...new Set(rows.map(r=>r.coord))].sort().map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
+  coord.innerHTML='<option value="">All coordinations</option>'+[...new Set(rows.map(r=>r.coord))].sort(compareCoord).map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join("");
 }
 function renderShannon(){
   const charge=document.querySelector("#chargeFilter").value,coord=document.querySelector("#coordFilter").value,rows=shannonRows().filter(r=>(!charge||r.charge===charge)&&(!coord||r.coord===coord));
